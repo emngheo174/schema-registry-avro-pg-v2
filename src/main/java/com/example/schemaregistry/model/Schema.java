@@ -1,8 +1,6 @@
 package com.example.schemaregistry.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 
 @Entity
@@ -13,17 +11,13 @@ public class Schema {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank
     private String subject;
 
-    @NotNull
     private Integer version;
 
-    @NotBlank
     @Column(name = "schema_text")
     private String schemaText;
 
-    @NotBlank
     @Column(name = "schema_type")
     private String schemaType = "AVRO";
 
