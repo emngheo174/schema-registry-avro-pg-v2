@@ -1,9 +1,3 @@
--- Create schema_registry database
-CREATE DATABASE schema_registry;
-
--- Switch to schema_registry
-\c schema_registry;
-
 -- Create schemas table
 CREATE TABLE schemas (
     id SERIAL PRIMARY KEY,
@@ -14,3 +8,9 @@ CREATE TABLE schemas (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(subject, version)
 );
+
+-- Create index for faster subject lookups
+CREATE INDEX idx_schemas_subject ON schemas(subject);
+
+-- Create index for faster subject and version lookups
+CREATE INDEX idx_schemas_subject_version ON schemas(subject, version DESC);

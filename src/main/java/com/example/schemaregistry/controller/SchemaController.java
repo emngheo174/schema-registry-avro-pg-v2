@@ -1,9 +1,11 @@
 package com.example.schemaregistry.controller;
 
+import com.example.schemaregistry.model.ErrorResponse;
 import com.example.schemaregistry.model.Schema;
 import com.example.schemaregistry.service.SchemaService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,12 +24,16 @@ public class SchemaController {
     private String compatibilityLevel;
 
     @PostMapping("/{subject}")
-    public ResponseEntity<Schema> registerSchema(@PathVariable String subject, @RequestBody String schemaText) {
+    public ResponseEntity<?> registerSchema(@PathVariable String subject, @RequestBody String schemaText) {
         try {
             Schema schema = schemaService.registerSchema(subject, schemaText);
             return ResponseEntity.ok(schema);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+            ErrorResponse error = new ErrorResponse(42201, e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (Exception e) {
+            ErrorResponse error = new ErrorResponse(50001, "Internal server error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
 
@@ -61,22 +67,41 @@ public class SchemaController {
     }
 
     @PostMapping("/{subject}/compatibility")
-    public ResponseEntity<Map<String, Boolean>> checkCompatibility(@PathVariable String subject, @RequestBody String schemaText) {
+    public ResponseEntity<?> checkCompatibility(@PathVariable String subject, @RequestBody String schemaText) {
         try {
             boolean compatible = schemaService.isCompatible(subject, schemaText, compatibilityLevel);
             return ResponseEntity.ok(Map.of("is_compatible", compatible));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("is_compatible", false));
+            ErrorResponse error = new ErrorResponse(42201, e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (Exception e) {
+            ErrorResponse error = new ErrorResponse(50001, "Internal server error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
     @PutMapping("/{subject}/config")
-    public ResponseEntity<Void> updateConfig(@PathVariable String subject, @RequestBody Map<String, String> config) {
-        String level = config.get("compatibility");
-        if (level != null) {
+    public ResponseEntity<?> updateConfig(@PathVariable String subject, @RequestBody Map<String, String> config) {
+        try {
+            String level = config.get("compatibility");
+            if (level == null) {
+                ErrorResponse error = new ErrorResponse(42202, "Missing compatibility level in request body");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+
+            // Validate compatibility level
+            String levelUpper = level.toUpperCase();
+            if (!levelUpper.equals("NONE") && !levelUpper.equals("BACKWARD") &&
+                !levelUpper.equals("FORWARD") && !levelUpper.equals("FULL")) {
+                ErrorResponse error = new ErrorResponse(42203, "Invalid compatibility level: " + level + ". Valid values: NONE, BACKWARD, FORWARD, FULL");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+
             schemaService.setCompatibilityLevel(subject, level);
-            return ResponseEntity.ok().build();
+            return ResponseEntity.ok(Map.of("compatibility", level));
+        } catch (Exception e) {
+            ErrorResponse error = new ErrorResponse(50001, "Internal server error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
-        return ResponseEntity.badRequest().build();
     }
 
     @GetMapping("/{subject}/config")

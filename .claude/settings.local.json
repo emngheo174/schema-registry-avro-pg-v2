@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn clean compile:*)",
+      "Bash(docker compose logs:*)",
+      "Bash(docker compose:*)"
+    ]
+  }
+}

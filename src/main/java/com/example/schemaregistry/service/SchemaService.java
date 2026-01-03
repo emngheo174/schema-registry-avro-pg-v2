@@ -7,6 +7,9 @@ import com.example.schemaregistry.repository.SubjectConfigRepository;
 import org.apache.avro.SchemaCompatibility;
 import org.apache.avro.SchemaParseException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -30,7 +33,7 @@ public class SchemaService {
                 .orElse(compatibilityLevel);
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public Schema registerSchema(String subject, String schemaText) {
         // Validate Avro schema
         org.apache.avro.Schema newSchema;
@@ -54,9 +57,7 @@ public class SchemaService {
             }
 
             String level = getCompatibilityLevel(subject);
-            org.apache.avro.SchemaCompatibility.SchemaPairCompatibility pair = org.apache.avro.SchemaCompatibility.checkReaderWriterCompatibility(newSchema, existingSchema);
-            org.apache.avro.SchemaCompatibility.SchemaCompatibilityResult result = pair.getResult();
-            if (!isCompatible(result, level)) {
+            if (!checkCompatibility(newSchema, existingSchema, level)) {
                 throw new IllegalArgumentException("Schema is not compatible with existing schema. Compatibility level: " + level);
             }
         }
@@ -107,9 +108,7 @@ public class SchemaService {
         }
 
         String actualLevel = level != null ? level : getCompatibilityLevel(subject);
-        org.apache.avro.SchemaCompatibility.SchemaPairCompatibility pair = org.apache.avro.SchemaCompatibility.checkReaderWriterCompatibility(newSchema, existingSchema);
-        org.apache.avro.SchemaCompatibility.SchemaCompatibilityResult result = pair.getResult();
-        return isCompatible(result, actualLevel);
+        return checkCompatibility(newSchema, existingSchema, actualLevel);
     }
 
     public void setCompatibilityLevel(String subject, String level) {
@@ -117,6 +116,10 @@ public class SchemaService {
         config.setSubject(subject);
         config.setCompatibilityLevel(level);
         subjectConfigRepository.save(config);
+    }
+
+    public String getCompatibilityLevelForSubject(String subject) {
+        return getCompatibilityLevel(subject);
     }
 
     public List<String> getAllSubjects() {
@@ -135,16 +138,52 @@ public class SchemaService {
         subjectConfigRepository.findBySubject(subject).ifPresent(subjectConfigRepository::delete);
     }
 
-    private boolean isCompatible(org.apache.avro.SchemaCompatibility.SchemaCompatibilityResult result, String level) {
+    /**
+     * Check compatibility between new and existing schemas based on compatibility level.
+     *
+     * BACKWARD: New schema can read data written with existing schema (consumers can upgrade)
+     * FORWARD: Existing schema can read data written with new schema (producers can upgrade)
+     * FULL: Both BACKWARD and FORWARD (bidirectional compatibility)
+     * NONE: No compatibility checking
+     */
+    private boolean checkCompatibility(org.apache.avro.Schema newSchema, org.apache.avro.Schema existingSchema, String level) {
         switch (level.toUpperCase()) {
             case "NONE":
                 return true;
+
             case "BACKWARD":
+                // New schema (reader) should be able to read data written with existing schema (writer)
+                // Check: can new read old?
+                org.apache.avro.SchemaCompatibility.SchemaPairCompatibility backwardCompat =
+                    org.apache.avro.SchemaCompatibility.checkReaderWriterCompatibility(newSchema, existingSchema);
+                return backwardCompat.getResult().getCompatibility() ==
+                    org.apache.avro.SchemaCompatibility.SchemaCompatibilityType.COMPATIBLE;
+
             case "FORWARD":
+                // Existing schema (reader) should be able to read data written with new schema (writer)
+                // Check: can old read new?
+                org.apache.avro.SchemaCompatibility.SchemaPairCompatibility forwardCompat =
+                    org.apache.avro.SchemaCompatibility.checkReaderWriterCompatibility(existingSchema, newSchema);
+                return forwardCompat.getResult().getCompatibility() ==
+                    org.apache.avro.SchemaCompatibility.SchemaCompatibilityType.COMPATIBLE;
+
             case "FULL":
-                return result.getCompatibility() == org.apache.avro.SchemaCompatibility.SchemaCompatibilityType.COMPATIBLE;
+                // Both BACKWARD and FORWARD must be satisfied
+                org.apache.avro.SchemaCompatibility.SchemaPairCompatibility fullBackward =
+                    org.apache.avro.SchemaCompatibility.checkReaderWriterCompatibility(newSchema, existingSchema);
+                org.apache.avro.SchemaCompatibility.SchemaPairCompatibility fullForward =
+                    org.apache.avro.SchemaCompatibility.checkReaderWriterCompatibility(existingSchema, newSchema);
+
+                boolean isBackwardCompatible = fullBackward.getResult().getCompatibility() ==
+                    org.apache.avro.SchemaCompatibility.SchemaCompatibilityType.COMPATIBLE;
+                boolean isForwardCompatible = fullForward.getResult().getCompatibility() ==
+                    org.apache.avro.SchemaCompatibility.SchemaCompatibilityType.COMPATIBLE;
+
+                return isBackwardCompatible && isForwardCompatible;
+
             default:
-                return true; // default to compatible
+                // Unknown compatibility level, default to compatible
+                return true;
         }
     }
 }
