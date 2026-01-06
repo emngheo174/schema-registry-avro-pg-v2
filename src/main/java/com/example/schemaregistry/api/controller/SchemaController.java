@@ -1,8 +1,8 @@
-package com.example.schemaregistry.controller;
+package com.example.schemaregistry.api.controller;
 
-import com.example.schemaregistry.model.ErrorResponse;
-import com.example.schemaregistry.model.Schema;
-import com.example.schemaregistry.service.SchemaService;
+import com.example.schemaregistry.domain.model.ErrorResponse;
+import com.example.schemaregistry.domain.model.Schema;
+import com.example.schemaregistry.domain.service.SchemaService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;

@@ -1,4 +1,4 @@
-package com.example.schemaregistry.model;
+package com.example.schemaregistry.domain.model;
 
 public class ErrorResponse {
     private int errorCode;

@@ -1,4 +1,4 @@
-package com.example.schemaregistry.config;
+package com.example.schemaregistry.api;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
