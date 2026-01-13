@@ -3,10 +3,12 @@ WORKDIR /app
 
 COPY pom.xml .
 COPY src src
-RUN mvn -B package -Dmaven.test.skip=true
+# RUN mvn -B package -Dmaven.test.skip=true
+RUN mvn -X -e package -Dmaven.test.skip=true
+
 
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=builder /app/target/*.jar app.jar
-EXPOSE 8080
+EXPOSE 8081
 ENTRYPOINT ["java", "-jar", "app.jar"]
