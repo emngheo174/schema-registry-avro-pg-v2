@@ -44,6 +44,14 @@
         </repository>
     </repositories>
 
+    <!-- THÊM PHẦN NÀY: Plugin Repositories -->
+    <pluginRepositories>
+        <pluginRepository>
+            <id>confluent</id>
+            <url>https://packages.confluent.io/maven/</url>
+        </pluginRepository>
+    </pluginRepositories>
+
     <dependencyManagement>
         <dependencies>
             <!-- TestContainers BOM -->
@@ -192,6 +200,31 @@
                 <groupId>org.flywaydb</groupId>
                 <artifactId>flyway-maven-plugin</artifactId>
                 <version>${flyway.version}</version>
+            </plugin>
+            
+            <!-- THÊM PHẦN NÀY: Schema Registry Maven Plugin -->
+            <plugin>
+                <groupId>io.confluent</groupId>
+                <artifactId>kafka-schema-registry-maven-plugin</artifactId>
+                <version>${confluent.version}</version>
+                <configuration>
+                    <!-- URL của Schema Registry bạn muốn test -->
+                    <schemaRegistryUrls>
+                        <param>http://localhost:8081</param>
+                    </schemaRegistryUrls>
+                    
+                    <!-- 
+                    Uncomment và cấu hình nếu cần test compatibility với schemas cụ thể
+                    <subjects>
+                        <your-subject-name>src/main/resources/avro/your-schema.avsc</your-subject-name>
+                    </subjects>
+                    -->
+                    
+                    <!-- 
+                    Uncomment nếu Schema Registry có authentication
+                    <schemaRegistryBasicAuthUserInfo>username:password</schemaRegistryBasicAuthUserInfo>
+                    -->
+                </configuration>
             </plugin>
         </plugins>
     </build>
