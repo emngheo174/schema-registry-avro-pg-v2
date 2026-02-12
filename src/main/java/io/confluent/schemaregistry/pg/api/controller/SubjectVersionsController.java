@@ -63,7 +63,7 @@ public class SubjectVersionsController {
      * POST /subjects/{subject}/versions - Register new schema.
      */
     @PostMapping
-    public ResponseEntity<SchemaId> registerSchema(
+    public ResponseEntity<Map<String, Object>> registerSchema(
             @PathVariable String subject,
             @RequestBody SchemaEntity request,
             @RequestParam(defaultValue = "false") boolean normalize
@@ -104,7 +104,9 @@ public class SubjectVersionsController {
         Integer explicitId = request.getId() != null ? request.getId().getValue() : null;
         SubjectVersion sv = subjectService.registerVersion(subjectName, schema, explicitId);
 
-        return ResponseEntity.ok(sv.getSchemaId());
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("id", sv.getSchemaId().getValue());
+        return ResponseEntity.ok(response);
     }
 
     /**

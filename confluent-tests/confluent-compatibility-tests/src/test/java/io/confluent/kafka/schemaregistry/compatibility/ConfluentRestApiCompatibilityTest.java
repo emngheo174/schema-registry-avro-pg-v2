@@ -10,6 +10,7 @@ import org.junit.jupiter.api.*;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Collection;
 
 import static io.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.*;
@@ -365,7 +366,16 @@ public class ConfluentRestApiCompatibilityTest {
         assertTrue(id > 0);
         
         // Retrieve
-        Schema retrieved = client.getById(id).rawSchema();
+        Object byId = client.getById(id);
+        Schema retrieved;
+        if (byId instanceof AvroSchema) {
+            retrieved = ((AvroSchema) byId).rawSchema();
+        } else if (byId instanceof Schema) {
+            retrieved = (Schema) byId;
+        } else {
+            fail("Unexpected schema type from client.getById: " + (byId == null ? "null" : byId.getClass()));
+            return;
+        }
         assertEquals(schema, retrieved);
         
         System.out.println("✅ Client library registration working");
@@ -388,7 +398,7 @@ public class ConfluentRestApiCompatibilityTest {
     @Order(17)
     @DisplayName("Client: List all subjects")
     void testClientListSubjects() throws IOException, RestClientException {
-        List<String> subjects = client.getAllSubjects();
+        Collection<String> subjects = client.getAllSubjects();
         assertNotNull(subjects);
         assertFalse(subjects.isEmpty());
         

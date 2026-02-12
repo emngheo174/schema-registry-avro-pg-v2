@@ -54,21 +54,15 @@ public class CompatibilityController {
         // Get the version to test against
         SubjectVersion targetVersion = subjectService.getVersion(subjectName, versionObj, false);
 
-        // Get all schemas from this version backwards
+        // Get all schemas up to and including the target version
         List<Integer> versions = subjectService.listVersions(subjectName, false);
         List<String> existingSchemas = new ArrayList<>();
 
-        for (int i = versions.size() - 1; i >= 0; i--) {
-            int v = versions.get(i);
-            if (v > targetVersion.getVersion().getValue()) {
-                continue; // Skip versions newer than target
-            }
-            SubjectVersion sv = subjectService.getVersion(subjectName, Version.of(v), false);
-            SchemaEntity schema = schemaService.getById(sv.getSchemaId());
-            existingSchemas.add(schema.getSchemaText());
-
-            if (v == targetVersion.getVersion().getValue()) {
-                break; // Stop at target version
+        for (int v : versions) {
+            if (v <= targetVersion.getVersion().getValue()) {
+                SubjectVersion sv = subjectService.getVersion(subjectName, Version.of(v), false);
+                SchemaEntity schema = schemaService.getById(sv.getSchemaId());
+                existingSchemas.add(schema.getSchemaText());
             }
         }
 
